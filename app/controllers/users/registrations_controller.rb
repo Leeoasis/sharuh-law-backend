@@ -13,10 +13,20 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def sign_up_params
-    params.require(:user).permit(:email, :password, :password_confirmation, :name, :role)
+    params.require(:user).permit(
+      :email, :password, :password_confirmation, :name, :role, :phone_number, :profile_picture, :address,
+      :license_number, :specializations, :experience_years, :bio, :languages, :hourly_rate, :office_address,
+      :practice_state, :average_rating, :review_count, :certifications, :verification_status, :portfolio_url,
+      :preferred_language, :budget, :case_type, :current_case_id
+    )
   end
 
   def account_update_params
-    params.require(:user).permit(:email, :password, :password_confirmation, :current_password, :name, :role)
+    params.require(:user).permit(
+      :email, :password, :password_confirmation, :current_password, :name, :role, :phone_number, :profile_picture, :address,
+      :license_number, :specializations, :experience_years, :bio, :languages, :hourly_rate, :office_address,
+      :practice_state, :average_rating, :review_count, :certifications, :verification_status, :portfolio_url,
+      :preferred_language, :budget, :case_type, :current_case_id
+    )
   end
 end
