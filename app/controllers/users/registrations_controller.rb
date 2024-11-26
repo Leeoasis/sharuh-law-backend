@@ -1,32 +1,34 @@
-# app/controllers/users/registrations_controller.rb
 class Users::RegistrationsController < Devise::RegistrationsController
+  before_action :configure_permitted_parameters
+
   respond_to :json
 
-  private
+  def create
+    build_resource(sign_up_params)
 
-  def respond_with(resource, _opts = {})
-    if resource.persisted?
-      render json: { message: "Signed up successfully", user: resource }, status: :ok
+    if resource.save
+      render json: { user: resource, role: resource.role }, status: :created
     else
-      render json: { message: "User could not be created", errors: resource.errors.full_messages }, status: :unprocessable_entity
+      Rails.logger.debug "User save failed: #{resource.errors.full_messages.join(', ')}"
+      render json: { errors: resource.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
-  def sign_up_params
-    params.require(:user).permit(
-      :email, :password, :password_confirmation, :name, :role, :phone_number, :profile_picture, :address,
-      :license_number, :specializations, :experience_years, :bio, :languages, :hourly_rate, :office_address,
-      :practice_state, :average_rating, :review_count, :certifications, :verification_status, :portfolio_url,
-      :preferred_language, :budget, :case_type, :current_case_id
-    )
+  private
+
+  def configure_permitted_parameters
+    devise_parameter_sanitizer.permit(:sign_up, keys: [
+      :name, :role, :preferred_language, :budget, :license_number, :specializations, :experience_years
+    ])
   end
 
-  def account_update_params
-    params.require(:user).permit(
-      :email, :password, :password_confirmation, :current_password, :name, :role, :phone_number, :profile_picture, :address,
-      :license_number, :specializations, :experience_years, :bio, :languages, :hourly_rate, :office_address,
-      :practice_state, :average_rating, :review_count, :certifications, :verification_status, :portfolio_url,
-      :preferred_language, :budget, :case_type, :current_case_id
-    )
+  def sign_up_params
+    permitted_params = [ :email, :password, :password_confirmation, :name, :role ]
+    if params[:registration][:role] == "lawyer"
+      permitted_params += [ :license_number, :specializations, :experience_years ]
+    else
+      permitted_params += [ :preferred_language, :budget ]
+    end
+    params.require(:registration).permit(permitted_params)
   end
 end

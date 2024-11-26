@@ -36,29 +36,29 @@ class DeviseCreateUsers < ActiveRecord::Migration[7.2]
       t.string :name
       t.string :role, null: false, default: "client"
       t.string :phone_number
-      t.string :profile_picture
+      # t.string :profile_picture
       t.text :address
 
       # Lawyer-specific fields
       t.string :license_number
       t.text :specializations
       t.integer :experience_years
-      t.text :bio
-      t.string :languages, array: true, default: []
-      t.decimal :hourly_rate, precision: 10, scale: 2
-      t.text :office_address
-      t.string :practice_state
-      t.float :average_rating, default: 0.0
-      t.integer :review_count, default: 0
-      t.text :certifications
-      t.boolean :verification_status, default: false
-      t.string :portfolio_url
+      # t.text :bio
+      # t.string :languages, array: true, default: []
+      # t.decimal :hourly_rate, precision: 10, scale: 2
+      # t.text :office_address
+      # t.string :practice_state
+      # t.float :average_rating, default: 0.0
+      # t.integer :review_count, default: 0
+      # t.text :certifications
+      # t.boolean :verification_status, default: false
+      # t.string :portfolio_url
 
       # Client-specific fields
       t.string :preferred_language
       t.string :budget
-      t.string :case_type
-      t.integer :current_case_id
+      # t.string :case_type
+      # t.integer :current_case_id
 
       # System-level fields
       t.datetime :last_login_at
