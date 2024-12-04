@@ -10,9 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2024_11_20_114236) do
+ActiveRecord::Schema[7.2].define(version: 2024_12_04_114352) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "cases", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description", null: false
+    t.bigint "client_id", null: false
+    t.bigint "lawyer_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_cases_on_client_id"
+    t.index ["lawyer_id"], name: "index_cases_on_lawyer_id"
+  end
 
   create_table "jwt_denylists", force: :cascade do |t|
     t.string "jti"
@@ -31,25 +42,12 @@ ActiveRecord::Schema[7.2].define(version: 2024_11_20_114236) do
     t.string "name"
     t.string "role", default: "client", null: false
     t.string "phone_number"
-    t.string "profile_picture"
     t.text "address"
     t.string "license_number"
     t.text "specializations"
     t.integer "experience_years"
-    t.text "bio"
-    t.string "languages", default: [], array: true
-    t.decimal "hourly_rate", precision: 10, scale: 2
-    t.text "office_address"
-    t.string "practice_state"
-    t.float "average_rating", default: 0.0
-    t.integer "review_count", default: 0
-    t.text "certifications"
-    t.boolean "verification_status", default: false
-    t.string "portfolio_url"
     t.string "preferred_language"
     t.string "budget"
-    t.string "case_type"
-    t.integer "current_case_id"
     t.datetime "last_login_at"
     t.datetime "last_activity_at"
     t.string "status", default: "active"
@@ -58,4 +56,7 @@ ActiveRecord::Schema[7.2].define(version: 2024_11_20_114236) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
+
+  add_foreign_key "cases", "users", column: "client_id"
+  add_foreign_key "cases", "users", column: "lawyer_id"
 end

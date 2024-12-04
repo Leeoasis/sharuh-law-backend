@@ -23,4 +23,7 @@ class User < ApplicationRecord
     validates :specializations, presence: true
     validates :experience_years, presence: true, numericality: { only_integer: true }
   end
+
+  has_many :client_cases, class_name: 'Case', foreign_key: 'client_id', dependent: :destroy
+  has_many :lawyer_cases, class_name: 'Case', foreign_key: 'lawyer_id', dependent: :destroy
 end
