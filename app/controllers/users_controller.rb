@@ -1,5 +1,5 @@
 class UsersController < ApplicationController
-  skip_before_action :verify_authenticity_token, raise: false 
+  skip_before_action :verify_authenticity_token, raise: false
 
   # GET /api/lawyers
   def lawyers
@@ -12,12 +12,19 @@ class UsersController < ApplicationController
     render json: @clients
   end
 
-  # PUT /api/user
+  # PUT /api/user/:id
   def update_profile
-    if current_user.update(user_params)
-      render json: current_user, status: :ok
+    @user = User.find_by(id: params[:id])
+
+    if @user.nil?
+      render json: { error: "User not found" }, status: :not_found
+      return
+    end
+
+    if @user.update(user_params)
+      render json: { message: "Profile updated successfully" }, status: :ok
     else
-      render json: current_user.errors, status: :unprocessable_entity
+      render json: { error: @user.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
