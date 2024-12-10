@@ -28,9 +28,9 @@ class UsersController < ApplicationController
     end
   end
 
-  # GET /api/user/profile
+  # GET /api/user/profile/:role/:id
   def profile
-    @user = User.find_by(role: params[:role])
+    @user = User.find_by(id: params[:id], role: params[:role])
 
     if @user.nil?
       render json: { error: "User not found" }, status: :not_found

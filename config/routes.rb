@@ -22,8 +22,8 @@ Rails.application.routes.draw do
   # Profile management route
   put "api/user/:id", to: "users#update_profile"
 
-  # Fetch profile route
-  get "api/user/profile", to: "users#profile"
+  # Fetch profile route by role and ID
+  get "api/user/profile/:role/:id", to: "users#profile"
 
   # Other routes
   # root to: "home#index" # Replace with your desired root path
