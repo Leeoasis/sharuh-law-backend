@@ -9,7 +9,9 @@ Rails.application.routes.draw do
     registrations: "users/registrations"
   }
 
-  resources :cases, only: [ :index, :show, :create, :update, :destroy ]
+  resources :users do
+    resources :cases, only: [ :index, :show, :create, :update, :destroy ]
+  end
 
   # Lawyer search route
   get "api/lawyers", to: "users#lawyers"
@@ -17,8 +19,11 @@ Rails.application.routes.draw do
   # Client search route
   get "api/clients", to: "users#clients"
 
-# Profile management route
-put "api/user/:id", to: "users#update_profile"
+  # Profile management route
+  put "api/user/:id", to: "users#update_profile"
+
+  # Fetch profile route
+  get "api/user/profile", to: "users#profile"
 
   # Other routes
   # root to: "home#index" # Replace with your desired root path

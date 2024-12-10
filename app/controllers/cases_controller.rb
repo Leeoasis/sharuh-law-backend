@@ -1,14 +1,14 @@
 class CasesController < ApplicationController
-  before_action :set_case, only: [:show, :update, :destroy]
-  skip_before_action :verify_authenticity_token, raise: false 
-
+  before_action :set_case, only: [ :show, :update, :destroy ]
+  skip_before_action :verify_authenticity_token, raise: false
 
   # GET /cases
   def index
-    if current_user.client?
-      @cases = current_user.client_cases
-    elsif current_user.lawyer?
-      @cases = current_user.lawyer_cases
+    user = User.find(params[:user_id])
+    if user.client?
+      @cases = user.client_cases
+    elsif user.lawyer?
+      @cases = user.lawyer_cases
     end
     render json: @cases
   end
@@ -20,7 +20,8 @@ class CasesController < ApplicationController
 
   # POST /cases
   def create
-    @case = current_user.client_cases.build(case_params)
+    user = User.find(params[:user_id])
+    @case = user.client_cases.build(case_params)
 
     if @case.save
       render json: @case, status: :created
@@ -47,11 +48,12 @@ class CasesController < ApplicationController
   private
 
   def set_case
-    @case = if current_user.client?
-              current_user.client_cases.find(params[:id])
-            elsif current_user.lawyer?
-              current_user.lawyer_cases.find(params[:id])
-            end
+    user = User.find(params[:user_id])
+    @case = if user.client?
+              user.client_cases.find(params[:id])
+    elsif user.lawyer?
+              user.lawyer_cases.find(params[:id])
+    end
   end
 
   def case_params

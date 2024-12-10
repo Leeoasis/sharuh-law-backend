@@ -28,6 +28,17 @@ class UsersController < ApplicationController
     end
   end
 
+  # GET /api/user/profile
+  def profile
+    @user = User.find_by(role: params[:role])
+
+    if @user.nil?
+      render json: { error: "User not found" }, status: :not_found
+    else
+      render json: @user, status: :ok
+    end
+  end
+
   private
 
   def search_params
