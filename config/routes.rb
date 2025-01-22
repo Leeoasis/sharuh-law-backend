@@ -10,7 +10,9 @@ Rails.application.routes.draw do
   }
 
   resources :users do
-    resources :cases, only: [ :index, :show, :create, :update, :destroy ]
+    resources :cases, only: [ :index, :show, :create, :update, :destroy ] do
+      patch :accept, on: :member # Adding accept as a member action
+    end
   end
 
   # Lawyer search route
