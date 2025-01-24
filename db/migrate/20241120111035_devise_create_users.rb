@@ -41,13 +41,13 @@ class DeviseCreateUsers < ActiveRecord::Migration[7.2]
 
       # Lawyer-specific fields
       t.string :license_number
-      t.text :specializations
+      t.text :area_of_expertise
       t.integer :experience_years
       # t.text :bio
       # t.string :languages, array: true, default: []
-      # t.decimal :hourly_rate, precision: 10, scale: 2
+      t.decimal :rate
       # t.text :office_address
-      # t.string :practice_state
+      t.string :preffered_court
       # t.float :average_rating, default: 0.0
       # t.integer :review_count, default: 0
       # t.text :certifications

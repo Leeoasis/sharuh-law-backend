@@ -25,7 +25,13 @@ class CasesController < ApplicationController
 
     if @case.save
       notify_matching_lawyers(@case)
-      render json: @case, status: :created
+      @case.reload # Ensure notifications are loaded
+
+      if @case.notifications.any? { |notification| notification.message.include?("No lawyers match") }
+        render json: { message: "No lawyers match your case. Try adjusting the details.", case: @case }, status: :created
+      else
+        render json: @case, status: :created
+      end
     else
       render json: @case.errors, status: :unprocessable_entity
     end
@@ -50,7 +56,7 @@ class CasesController < ApplicationController
   def accept
     lawyer = User.find(params[:lawyer_id])
 
-    if @case.lawyer.nil?  # Ensure only one lawyer gets assigned
+    if @case.lawyer.nil? # Ensure only one lawyer gets assigned
       @case.update(lawyer: lawyer)
       Notification.create(
         user_id: @case.client_id,
@@ -74,16 +80,20 @@ class CasesController < ApplicationController
   end
 
   def notify_matching_lawyers(case_instance)
-    matching_lawyers = User.lawyer.where(
-      "specializations LIKE ? AND preferred_language = ? AND experience_years >= ?",
-      "%#{case_instance.description}%",
-      case_instance.client.preferred_language,
-      2
-    )
+    return unless case_instance.persisted? # Ensure case is saved before sending notifications
+
+    preferred_language = case_instance.client&.preferred_language.presence || "English"
+    case_title = case_instance.title.presence || "General"
+
+    matching_lawyers = User.where(role: "lawyer")
+                           .where("areas_of_expertise ILIKE ?", "%#{case_title}%")
+                           .where(preferred_language: preferred_language)
+                           .where("experience_years >= ?", 2)
 
     if matching_lawyers.empty?
       Notification.create!(
         user_id: case_instance.client_id,
+        case_id: case_instance.id,
         message: "No lawyers match your case. Try adjusting the details."
       )
     else
@@ -93,12 +103,18 @@ class CasesController < ApplicationController
           case_id: case_instance.id,
           message: "A new case matches your expertise."
         )
-        NotificationsChannel.broadcast_to(lawyer, notification.as_json)
+
+        NotificationsChannel.broadcast_to(
+          lawyer,
+          notification.as_json(only: [ :id, :user_id, :case_id, :message, :created_at ])
+        )
       end
     end
+  rescue => e
+    Rails.logger.error("Error in notify_matching_lawyers: #{e.message}")
   end
 
   def case_params
-    params.require(:case).permit(:title, :description, :lawyer_id)
+    params.require(:case).permit(:title, :description, :court, :budget, :caseType)
   end
 end

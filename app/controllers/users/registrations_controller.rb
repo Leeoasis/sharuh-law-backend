@@ -18,14 +18,14 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [
-      :name, :role, :preferred_language, :budget, :license_number, :specializations, :experience_years
+      :name, :role, :preferred_language, :budget, :license_number, :areas_of_expertise, :experience_years, :preferred_court, :rate
     ])
   end
 
   def sign_up_params
     permitted_params = [ :email, :password, :password_confirmation, :name, :role ]
     if params[:registration][:role] == "lawyer"
-      permitted_params += [ :license_number, :specializations, :experience_years ]
+      permitted_params += [ :license_number, :areas_of_expertise, :experience_years, :preferred_court, :rate ]
     else
       permitted_params += [ :preferred_language, :budget ]
     end

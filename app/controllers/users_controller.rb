@@ -42,10 +42,10 @@ class UsersController < ApplicationController
   private
 
   def search_params
-    params.permit(:specializations, :experience_years, :preferred_language, :budget, :license_number)
+    params.permit(:area_of_expertise, :experience_years, :preferred_language, :budget, :license_number)
   end
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :preferred_language, :budget, :license_number, :specializations, :experience_years)
+    params.require(:user).permit(:name, :email, :password, :preferred_language, :budget, :license_number, :area_of_expertise, :experience_years, :rate, :preffered_court)
   end
 end
