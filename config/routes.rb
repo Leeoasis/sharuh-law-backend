@@ -12,8 +12,14 @@ Rails.application.routes.draw do
   resources :users do
     resources :cases, only: [ :index, :show, :create, :update, :destroy ] do
       patch :accept, on: :member # Adding accept as a member action
+      collection do
+        post :check_lawyers # Adding check_lawyers as a collection action
+      end
     end
   end
+
+  # Add this line to create a top-level route for cases
+  resources :cases, only: [ :index ]
 
   # Lawyer search route
   get "api/lawyers", to: "users#lawyers"
