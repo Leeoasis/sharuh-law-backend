@@ -7,19 +7,26 @@ class UsersController < ApplicationController
     render json: @lawyers
   end
 
+  # GET /api/clients
   def clients
     @clients = User.client.where(search_params)
     render json: @clients
   end
 
+  # ✅ GET /api/lawyer/:id/clients
+  def lawyer_clients
+    lawyer = User.find_by(id: params[:id], role: "lawyer")
+    return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
+
+    client_ids = Case.where(lawyer_id: lawyer.id).pluck(:client_id).uniq
+    clients = User.where(id: client_ids)
+    render json: clients
+  end
+
   # PUT /api/user/:id
   def update_profile
     @user = User.find_by(id: params[:id])
-
-    if @user.nil?
-      render json: { error: "User not found" }, status: :not_found
-      return
-    end
+    return render json: { error: "User not found" }, status: :not_found if @user.nil?
 
     if @user.update(user_params)
       render json: { message: "Profile updated successfully" }, status: :ok
@@ -31,7 +38,6 @@ class UsersController < ApplicationController
   # GET /api/user/profile/:role/:id
   def profile
     @user = User.find_by(id: params[:id], role: params[:role])
-
     if @user.nil?
       render json: { error: "User not found" }, status: :not_found
     else
@@ -46,6 +52,10 @@ class UsersController < ApplicationController
   end
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :preferred_language, :budget, :license_number, :area_of_expertise, :experience_years, :rate, :preffered_court)
+    params.require(:user).permit(
+      :name, :email, :password, :preferred_language, :budget,
+      :license_number, :area_of_expertise, :experience_years,
+      :rate, :preffered_court
+    )
   end
 end
