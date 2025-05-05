@@ -31,6 +31,13 @@ class CasesController < ApplicationController
 
       if matching_lawyers.any?
         matching_lawyers.each do |lawyer|
+          Notification.create!(
+            user: lawyer,
+            message: "New case: #{new_case.title}",
+            case: new_case,
+            read: false
+          )
+
           ActionCable.server.broadcast("NotificationsChannel_#{lawyer.id}", {
             message: "New case: #{new_case.title}",
             case_id: new_case.id
@@ -58,6 +65,13 @@ class CasesController < ApplicationController
     end
 
     @case.update!(lawyer_id: lawyer.id, status: "claimed")
+
+    Notification.create!(
+      user: @case.client,
+      message: "#{lawyer.name} accepted your case '#{@case.title}'",
+      case: @case,
+      read: false
+    )
 
     ActionCable.server.broadcast("NotificationsChannel_#{@case.client_id}", {
       message: "#{lawyer.name} accepted your case '#{@case.title}'"
