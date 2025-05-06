@@ -20,4 +20,5 @@ Rails.application.routes.draw do
   get "api/user/profile/:role/:id", to: "users#profile"
   get "api/notifications/:user_id", to: "notifications#index"
   put "api/user/:id", to: "users#update_profile"
+  get "api/lawyer/:id/available_cases", to: "cases#available_cases"
 end

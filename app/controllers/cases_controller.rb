@@ -86,6 +86,18 @@ class CasesController < ApplicationController
     render json: { message: "Case successfully claimed." }, status: :ok
   end
 
+  # GET /api/lawyer/:id/available_cases
+def available_cases
+  lawyer = User.find_by(id: params[:id], role: "lawyer")
+  return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
+
+  available = Case.where(lawyer_id: nil, status: "open")
+                  .where("case_type ILIKE ?", "%#{lawyer.areas_of_expertise}%")
+
+  render json: available
+end
+
+
   private
 
   def set_case
