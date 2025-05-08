@@ -1,8 +1,8 @@
 class CasesController < ApplicationController
-  before_action :set_case, only: [ :show, :update, :destroy, :accept ]
+  before_action :set_case, only: [:show, :update, :destroy, :accept]
   skip_before_action :verify_authenticity_token, raise: false
 
-  # GET /cases
+  # GET /users/:user_id/cases
   def index
     user = User.find(params[:user_id])
     if user.client?
@@ -10,15 +10,16 @@ class CasesController < ApplicationController
     elsif user.lawyer?
       @cases = user.lawyer_cases
     end
-    render json: @cases
+
+    render json: @cases, include: { lawyer: { only: [:id, :name, :email] } }
   end
 
-  # GET /cases/:id
+  # GET /users/:user_id/cases/:id
   def show
-    render json: @case
+    render json: @case, include: { lawyer: { only: [:id, :name, :email] } }
   end
 
-  # POST /cases/check_lawyers
+  # POST /users/:user_id/cases/check_lawyers
   def check_lawyers
     user = User.find(params[:user_id])
     @case = user.client_cases.build(case_params)
@@ -32,10 +33,10 @@ class CasesController < ApplicationController
     end
   end
 
-  # POST /cases
+  # POST /users/:user_id/cases
   def create
     user = User.find(params[:user_id])
-    @case = user.client_cases.build(case_params)
+    @case = user.client_cases.build(case_params.merge(status: "open"))
 
     if @case.save
       render json: @case, status: :created
@@ -44,7 +45,7 @@ class CasesController < ApplicationController
     end
   end
 
-  # PUT /cases/:id
+  # PUT /users/:user_id/cases/:id
   def update
     if @case.update(case_params)
       render json: @case
@@ -53,47 +54,79 @@ class CasesController < ApplicationController
     end
   end
 
-  # DELETE /cases/:id
+  # DELETE /users/:user_id/cases/:id
   def destroy
     @case.destroy
     head :no_content
   end
 
-  # PATCH /cases/:id/accept
+  # ✅ PATCH or POST /cases/:id/accept
   def accept
     lawyer = User.find(params[:lawyer_id])
 
-    if @case.lawyer.nil? # Ensure only one lawyer gets assigned
-      @case.update(lawyer: lawyer)
+    if @case.lawyer.nil?
+      @case.update(lawyer: lawyer, status: "claimed")
+
       Notification.create(
         user_id: @case.client_id,
         message: "Your case has been accepted by #{lawyer.name}."
       )
-      render json: { message: "You have been assigned to this case." }, status: :ok
+
+      render json: {
+        message: "You have been assigned to this case.",
+        case: @case
+      }, status: :ok
     else
-      render json: { error: "This case has already been accepted by #{@case.lawyer.name}." }, status: :unprocessable_entity
+      render json: {
+        error: "This case has already been accepted by #{@case.lawyer.name}."
+      }, status: :unprocessable_entity
     end
+  end
+
+  # GET /api/lawyer/:id/available_cases
+  def available_cases
+    lawyer = User.find_by(id: params[:id], role: 'lawyer')
+    return render json: { error: 'Lawyer not found' }, status: :not_found unless lawyer
+
+    open_cases = Case.where(lawyer_id: nil, status: "open")
+
+    lawyer_expertise = lawyer.areas_of_expertise.to_s.downcase.split(',').map(&:strip)
+    lawyer_courts = lawyer.preferred_court.to_s.downcase.split(',').map(&:strip)
+
+    matching = open_cases.select do |c|
+      expertise_match = lawyer_expertise.any? { |exp| exp == c.case_type.to_s.downcase.strip }
+      court_match = lawyer_courts.any? { |crt| crt == c.court.to_s.downcase.strip }
+
+      expertise_match && court_match
+    end
+
+    render json: matching
   end
 
   private
 
+  # ✅ Now supports both nested and top-level routes
   def set_case
-    user = User.find(params[:user_id])
-    @case = if user.client?
-              user.client_cases.find(params[:id])
-    elsif user.lawyer?
-              user.lawyer_cases.find(params[:id])
+    if params[:user_id]
+      user = User.find(params[:user_id])
+      @case = if user.client?
+                user.client_cases.find(params[:id])
+              elsif user.lawyer?
+                user.lawyer_cases.find(params[:id])
+              end
+    else
+      @case = Case.find(params[:id])
     end
   end
 
   def find_matching_lawyers(case_instance)
     User.where(role: "lawyer")
-        .where("areas_of_expertise ILIKE ?", "%#{case_instance.areas_of_expertise}%")
-        .where("preferred_court ILIKE ?", "%#{case_instance.preferred_court}%")
+        .where("areas_of_expertise ILIKE ?", "%#{case_instance.case_type}%")
+        .where("preferred_court ILIKE ?", "%#{case_instance.court}%")
         .where("rate <= ?", case_instance.budget)
   end
 
   def case_params
-    params.require(:case).permit(:title, :description, :preferred_court, :budget, :areas_of_expertise)
+    params.require(:case).permit(:title, :description, :court, :budget, :case_type)
   end
 end

@@ -28,4 +28,5 @@ class User < ApplicationRecord
 
   has_many :client_cases, class_name: "Case", foreign_key: "client_id", dependent: :destroy
   has_many :lawyer_cases, class_name: "Case", foreign_key: "lawyer_id", dependent: :destroy
+  has_many :notifications, dependent: :destroy
 end

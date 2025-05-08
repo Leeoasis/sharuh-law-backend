@@ -10,29 +10,36 @@ Rails.application.routes.draw do
   }
 
   resources :users do
-    resources :cases, only: [ :index, :show, :create, :update, :destroy ] do
-      patch :accept, on: :member # Adding accept as a member action
+    resources :cases, only: [:index, :show, :create, :update, :destroy] do
+      patch :accept, on: :member
       collection do
-        post :check_lawyers # Adding check_lawyers as a collection action
+        post :check_lawyers
       end
     end
   end
 
-  # Add this line to create a top-level route for cases
-  resources :cases, only: [ :index ]
+  # ✅ Allow POST /cases/:id/accept (for current frontend usage)
+  post '/cases/:id/accept', to: 'cases#accept'
 
-  # Lawyer search route
+  # Top-level case route (optional global view)
+  resources :cases, only: [:index]
+
+  # Lawyer search
   get "api/lawyers", to: "users#lawyers"
 
-  # Client search route
+  # Client search
   get "api/clients", to: "users#clients"
 
-  # Profile management route
+  # ✅ Lawyer's accepted clients
+  get "api/lawyer/:id/clients", to: "users#lawyer_clients"
+
+  # ✅ Lawyer's available cases
+  get "api/lawyer/:id/available_cases", to: "cases#available_cases"
+
+  # ✅ Notifications for any user
+  get "api/notifications/:user_id", to: "notifications#index"
+
+  # Profile update + view
   put "api/user/:id", to: "users#update_profile"
-
-  # Fetch profile route by role and ID
   get "api/user/profile/:role/:id", to: "users#profile"
-
-  # Other routes
-  # root to: "home#index" # Replace with your desired root path
 end

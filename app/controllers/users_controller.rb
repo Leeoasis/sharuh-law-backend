@@ -7,9 +7,21 @@ class UsersController < ApplicationController
     render json: @lawyers
   end
 
+  # GET /api/clients
   def clients
     @clients = User.client.where(search_params)
     render json: @clients
+  end
+
+  # ✅ GET /api/lawyer/:id/clients
+  def lawyer_clients
+    lawyer = User.find_by(id: params[:id], role: 'lawyer')
+    return render json: { error: 'Lawyer not found' }, status: :not_found unless lawyer
+
+    client_ids = Case.where(lawyer_id: lawyer.id).pluck(:client_id).uniq
+    clients = User.where(id: client_ids, role: 'client')
+
+    render json: clients
   end
 
   # PUT /api/user/:id
@@ -42,10 +54,14 @@ class UsersController < ApplicationController
   private
 
   def search_params
-    params.permit(:area_of_expertise, :experience_years, :preferred_language, :budget, :license_number)
+    params.permit(:areas_of_expertise, :experience_years, :preferred_language, :budget, :license_number)
   end
 
   def user_params
-    params.require(:user).permit(:name, :email, :password, :preferred_language, :budget, :license_number, :area_of_expertise, :experience_years, :rate, :preffered_court)
+    params.require(:user).permit(
+      :name, :email, :password, :preferred_language, :budget,
+      :license_number, :areas_of_expertise, :experience_years,
+      :rate, :preffered_court
+    )
   end
 end

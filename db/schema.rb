@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_01_24_105212) do
+ActiveRecord::Schema[7.2].define(version: 2025_05_08_225553) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -21,6 +21,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_24_105212) do
     t.bigint "lawyer_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "status"
+    t.integer "budget"
+    t.string "court"
+    t.string "case_type"
     t.index ["client_id"], name: "index_cases_on_client_id"
     t.index ["lawyer_id"], name: "index_cases_on_lawyer_id"
   end
@@ -55,7 +59,6 @@ ActiveRecord::Schema[7.2].define(version: 2025_01_24_105212) do
     t.string "phone_number"
     t.text "address"
     t.string "license_number"
-    t.text "area_of_expertise"
     t.integer "experience_years"
     t.decimal "rate"
     t.string "preffered_court"
