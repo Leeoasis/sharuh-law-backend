@@ -42,4 +42,7 @@ Rails.application.routes.draw do
   # Profile update + view
   put "api/user/:id", to: "users#update_profile"
   get "api/user/profile/:role/:id", to: "users#profile"
+
+  delete '/logout', to: 'users/sessions#destroy'
+
 end

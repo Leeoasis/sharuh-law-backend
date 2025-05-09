@@ -1,6 +1,16 @@
 class Users::SessionsController < Devise::SessionsController
   respond_to :json
 
+  def destroy
+    if current_user
+      sign_out(current_user)
+    end
+
+    render json: { message: "Logged out successfully" }, status: :ok
+  rescue JWT::DecodeError
+    render json: { message: "Token already invalid or missing" }, status: :ok
+  end
+
   private
 
   def respond_with(resource, _opts = {})
