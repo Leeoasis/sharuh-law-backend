@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_05_08_225553) do
+ActiveRecord::Schema[7.2].define(version: 2025_05_09_172644) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -35,6 +35,16 @@ ActiveRecord::Schema[7.2].define(version: 2025_05_08_225553) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["jti"], name: "index_jwt_denylists_on_jti"
+  end
+
+  create_table "messages", force: :cascade do |t|
+    t.integer "sender_id"
+    t.integer "receiver_id"
+    t.text "content"
+    t.bigint "case_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["case_id"], name: "index_messages_on_case_id"
   end
 
   create_table "notifications", force: :cascade do |t|
@@ -77,6 +87,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_05_08_225553) do
 
   add_foreign_key "cases", "users", column: "client_id"
   add_foreign_key "cases", "users", column: "lawyer_id"
+  add_foreign_key "messages", "cases"
   add_foreign_key "notifications", "cases"
   add_foreign_key "notifications", "users"
 end
