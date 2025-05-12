@@ -6,7 +6,6 @@ class CasesController < ApplicationController
   def index
     user = User.find(params[:user_id])
     @cases = user.client? ? user.client_cases : user.lawyer_cases
-
     render json: @cases, include: { lawyer: { only: [:id, :name, :email] } }
   end
 
@@ -34,27 +33,16 @@ class CasesController < ApplicationController
     @case = user.client_cases.build(case_params.merge(status: "open"))
 
     if @case.save
-      matching_lawyers = User.where(role: "lawyer").select do |lawyer|
-        lawyer.areas_of_expertise.to_s.downcase.include?(@case.case_type.to_s.downcase.strip) &&
-        lawyer.preferred_court.to_s.downcase.include?(@case.court.to_s.downcase.strip)
-      end
-
-      if matching_lawyers.any?
-        matching_lawyers.each do |lawyer|
-          Notification.create!(
-            user_id: lawyer.id,
-            case_id: @case.id,
-            message: "New case: #{@case.title}",
-            read: false
-          )
-          NotificationsChannel.broadcast_to(lawyer, {
-            message: "New case: #{@case.title}",
-            case_id: @case.id
-          })
-        end
-      else
-        NotificationsChannel.broadcast_to(@case.client, {
-          message: "No matching lawyers found for your case.",
+      admin_users = User.where(role: "admin")
+      admin_users.each do |admin|
+        Notification.create!(
+          user_id: admin.id,
+          case_id: @case.id,
+          message: "New case submitted: #{@case.title}",
+          read: false
+        )
+        NotificationsChannel.broadcast_to(admin, {
+          message: "New case submitted: #{@case.title}",
           case_id: @case.id
         })
       end
@@ -66,10 +54,45 @@ class CasesController < ApplicationController
   end
 
   def update
-    if @case.update(case_params)
-      render json: @case
+    if params[:case][:lawyer_id].present?
+      lawyer = User.find_by(id: params[:case][:lawyer_id], role: 'lawyer')
+      return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
+
+      if @case.update(case_params.merge(lawyer_id: lawyer.id, status: 'claimed'))
+        Notification.create!(
+          user_id: @case.client_id,
+          case_id: @case.id,
+          message: "Your case has been assigned to #{lawyer.name}.",
+          read: false
+        )
+
+        NotificationsChannel.broadcast_to(@case.client, {
+          message: "Your case has been assigned to #{lawyer.name}",
+          case_id: @case.id
+        })
+
+        Notification.create!(
+          user_id: lawyer.id,
+          case_id: @case.id,
+          message: "You have been assigned a new case: #{@case.title}",
+          read: false
+        )
+
+        NotificationsChannel.broadcast_to(lawyer, {
+          message: "You have been assigned a new case: #{@case.title}",
+          case_id: @case.id
+        })
+
+        render json: @case, include: { lawyer: { only: [:id, :name] } }
+      else
+        render json: @case.errors, status: :unprocessable_entity
+      end
     else
-      render json: @case.errors, status: :unprocessable_entity
+      if @case.update(case_params)
+        render json: @case
+      else
+        render json: @case.errors, status: :unprocessable_entity
+      end
     end
   end
 
@@ -124,6 +147,15 @@ class CasesController < ApplicationController
     render json: matching, include: { lawyer: { only: [:id, :name] } }
   end
 
+  # GET /admin-cases
+  def admin_index
+    admin = User.find_by(id: params[:user_id], role: "admin")
+    return render json: { error: "Unauthorized" }, status: :unauthorized unless admin
+
+    cases = Case.where(lawyer_id: nil, status: 'open')
+    render json: cases, include: { client: { only: [:id, :name, :email] } }
+  end
+
   private
 
   def set_case
@@ -143,6 +175,15 @@ class CasesController < ApplicationController
   end
 
   def case_params
-    params.require(:case).permit(:title, :description, :court, :budget, :case_type)
+    params.require(:case).permit(
+      :title,
+      :description,
+      :court,
+      :budget,
+      :case_type,
+      :fee,
+      :commission,
+      :lawyer_id
+    )
   end
 end

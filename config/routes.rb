@@ -30,6 +30,8 @@ Rails.application.routes.draw do
   get "api/notifications/:user_id", to: "notifications#index"
   put "api/user/:id", to: "users#update_profile"
   get "api/user/profile/:role/:id", to: "users#profile"
+  get "/admin-cases", to: "cases#admin_index"
+
 
   # Admin namespace for secure access
   namespace :admin do
