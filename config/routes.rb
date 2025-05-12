@@ -18,31 +18,23 @@ Rails.application.routes.draw do
     end
   end
 
-  # ✅ Allow POST /cases/:id/accept (for current frontend usage)
+  # Global case view
   post '/cases/:id/accept', to: 'cases#accept'
-
-  # Top-level case route (optional global view)
   resources :cases, only: [:index]
 
-  # Lawyer search
+  # API utilities
   get "api/lawyers", to: "users#lawyers"
-
-  # Client search
   get "api/clients", to: "users#clients"
-
-  # ✅ Lawyer's accepted clients
   get "api/lawyer/:id/clients", to: "users#lawyer_clients"
-
-  # ✅ Lawyer's available cases
   get "api/lawyer/:id/available_cases", to: "cases#available_cases"
-
-  # ✅ Notifications for any user
   get "api/notifications/:user_id", to: "notifications#index"
-
-  # Profile update + view
   put "api/user/:id", to: "users#update_profile"
   get "api/user/profile/:role/:id", to: "users#profile"
 
-  delete '/logout', to: 'users/sessions#destroy'
+  # Admin namespace for secure access
+  namespace :admin do
+    resources :cases, only: [:index, :update] # /admin/cases
+  end
 
+  delete '/logout', to: 'users/sessions#destroy'
 end

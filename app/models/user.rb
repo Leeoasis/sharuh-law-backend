@@ -4,7 +4,7 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable,
          :jwt_authenticatable, jwt_revocation_strategy: JwtDenylist
 
-  enum :role, { client: "client", lawyer: "lawyer" }
+  enum :role, { client: "client", lawyer: "lawyer", admin: "admin" }
 
   # Common validations
   validates :email, presence: true, uniqueness: true
