@@ -58,7 +58,8 @@ class CasesController < ApplicationController
       lawyer = User.find_by(id: params[:case][:lawyer_id], role: 'lawyer')
       return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
-      if @case.update(case_params.merge(lawyer_id: lawyer.id, status: 'claimed'))
+      # ✅ Set status to open (NOT claimed) — lawyer must explicitly accept
+      if @case.update(case_params.merge(lawyer_id: lawyer.id, status: 'open'))
         Notification.create!(
           user_id: @case.client_id,
           case_id: @case.id,
@@ -101,39 +102,44 @@ class CasesController < ApplicationController
     head :no_content
   end
 
-  def accept
-    lawyer = User.find(params[:lawyer_id])
+def accept
+  lawyer = User.find(params[:lawyer_id])
 
-    if @case.lawyer.nil?
-      @case.update!(lawyer: lawyer, status: "claimed")
-
-      Notification.create!(
-        user_id: @case.client_id,
-        message: "Your case has been accepted by #{lawyer.name}.",
-        case_id: @case.id
-      )
-
-      NotificationsChannel.broadcast_to(@case.client, {
-        message: "Your case was accepted by #{lawyer.name}",
-        case_id: @case.id
-      })
-
-      render json: {
-        message: "You have been assigned to this case.",
-        case: @case
-      }, status: :ok
-    else
-      render json: {
-        error: "This case has already been accepted by #{@case.lawyer.name}."
-      }, status: :unprocessable_entity
-    end
+  if @case.lawyer_id != lawyer.id
+    render json: { error: "You are not assigned to this case." }, status: :unauthorized
+    return
   end
+
+  if @case.status == "claimed"
+    render json: { error: "This case has already been claimed." }, status: :unprocessable_entity
+    return
+  end
+
+  @case.update!(status: "claimed")
+
+  Notification.create!(
+    user_id: @case.client_id,
+    message: "Your case has been accepted by #{lawyer.name}.",
+    case_id: @case.id
+  )
+
+  NotificationsChannel.broadcast_to(@case.client, {
+    message: "Your case was accepted by #{lawyer.name}",
+    case_id: @case.id
+  })
+
+  render json: {
+    message: "You have accepted the case.",
+    case: @case
+  }, status: :ok
+end
+
 
   def available_cases
     lawyer = User.find_by(id: params[:id], role: 'lawyer')
     return render json: { error: 'Lawyer not found' }, status: :not_found unless lawyer
 
-    open_cases = Case.where(lawyer_id: nil, status: "open")
+    open_cases = Case.where(status: "open")
 
     lawyer_expertise = lawyer.areas_of_expertise.to_s.downcase.split(',').map(&:strip)
     lawyer_courts = lawyer.preferred_court.to_s.downcase.split(',').map(&:strip)
@@ -161,7 +167,14 @@ class CasesController < ApplicationController
   def set_case
     if params[:user_id]
       user = User.find(params[:user_id])
-      @case = user.client? ? user.client_cases.find(params[:id]) : user.lawyer_cases.find(params[:id])
+
+      if user.client?
+        @case = user.client_cases.find(params[:id])
+      elsif user.lawyer?
+        @case = user.lawyer_cases.find(params[:id])
+      else
+        @case = Case.find(params[:id])
+      end
     else
       @case = Case.find(params[:id])
     end

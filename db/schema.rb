@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_05_09_172644) do
+ActiveRecord::Schema[7.2].define(version: 2025_05_15_144740) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -25,6 +25,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_05_09_172644) do
     t.integer "budget"
     t.string "court"
     t.string "case_type"
+    t.decimal "fee"
+    t.decimal "commission"
     t.index ["client_id"], name: "index_cases_on_client_id"
     t.index ["lawyer_id"], name: "index_cases_on_lawyer_id"
   end
@@ -81,6 +83,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_05_09_172644) do
     t.datetime "updated_at", null: false
     t.string "areas_of_expertise"
     t.string "preferred_court"
+    t.boolean "approved"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end

@@ -13,7 +13,7 @@ class UsersController < ApplicationController
     render json: @clients
   end
 
-  # ✅ GET /api/lawyer/:id/clients
+  # GET /api/lawyer/:id/clients
   def lawyer_clients
     lawyer = User.find_by(id: params[:id], role: 'lawyer')
     return render json: { error: 'Lawyer not found' }, status: :not_found unless lawyer
@@ -34,8 +34,13 @@ class UsersController < ApplicationController
     end
 
     if @user.update(user_params)
+      if @user.saved_change_to_approved? && @user.approved?
+        LawyerMailer.approval_email(@user).deliver_later
+      end
+
       render json: { message: "Profile updated successfully" }, status: :ok
     else
+      logger.error "UPDATE FAILED: #{@user.errors.full_messages}"
       render json: { error: @user.errors.full_messages }, status: :unprocessable_entity
     end
   end
@@ -59,9 +64,19 @@ class UsersController < ApplicationController
 
   def user_params
     params.require(:user).permit(
-      :name, :email, :password, :preferred_language, :budget,
-      :license_number, :areas_of_expertise, :experience_years,
-      :rate, :preffered_court
+      :name,
+      :email,
+      :password,
+      :preferred_language,
+      :budget,
+      :license_number,
+      :areas_of_expertise,
+      :experience_years,
+      :rate,
+      :preferred_court,
+      :address,
+      :phone_number,
+      :approved
     )
   end
 end
