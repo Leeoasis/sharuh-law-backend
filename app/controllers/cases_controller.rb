@@ -133,7 +133,7 @@ def accept
     case: @case
   }, status: :ok
 end
-
+sa
 
   def available_cases
     lawyer = User.find_by(id: params[:id], role: 'lawyer')
