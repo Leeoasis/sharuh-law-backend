@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_05_15_144740) do
+ActiveRecord::Schema[7.2].define(version: 2025_05_29_144412) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -84,6 +84,14 @@ ActiveRecord::Schema[7.2].define(version: 2025_05_15_144740) do
     t.string "areas_of_expertise"
     t.string "preferred_court"
     t.boolean "approved"
+    t.string "good_standing_letter"
+    t.string "fidelity_fund_certificate"
+    t.string "id_document"
+    t.string "practice_address"
+    t.string "engagement_form"
+    t.string "client_id_document"
+    t.string "client_proof_of_address"
+    t.string "admission_enrollment_order"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end

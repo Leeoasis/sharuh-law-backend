@@ -1,19 +1,20 @@
 class CasesController < ApplicationController
-  before_action :set_case, only: [:show, :update, :destroy, :accept]
+  before_action :set_case, only: [ :show, :update, :destroy, :accept ]
   skip_before_action :verify_authenticity_token, raise: false
 
   # GET /users/:user_id/cases
   def index
     user = User.find(params[:user_id])
     @cases = user.client? ? user.client_cases : user.lawyer_cases
-    render json: @cases, include: { lawyer: { only: [:id, :name, :email] } }
+    render json: @cases, include: { lawyer: { only: [ :id, :name, :email ] } }
   end
 
   # GET /users/:user_id/cases/:id
   def show
-    render json: @case, include: { lawyer: { only: [:id, :name, :email] } }
+    render json: @case, include: { lawyer: { only: [ :id, :name, :email ] } }
   end
 
+  # POST /users/:user_id/cases/check_lawyers
   def check_lawyers
     user = User.find(params[:user_id])
     @case = user.client_cases.build(case_params)
@@ -26,6 +27,7 @@ class CasesController < ApplicationController
     end
   end
 
+  # POST /users/:user_id/cases
   def create
     user = User.find(params[:user_id])
     return render json: { error: "Case type is required" }, status: :unprocessable_entity if case_params[:case_type].blank?
@@ -33,6 +35,7 @@ class CasesController < ApplicationController
     @case = user.client_cases.build(case_params.merge(status: "open"))
 
     if @case.save
+      # Notify admins
       admin_users = User.where(role: "admin")
       admin_users.each do |admin|
         Notification.create!(
@@ -47,44 +50,44 @@ class CasesController < ApplicationController
         })
       end
 
-      render json: @case, include: { lawyer: { only: [:id, :name] } }, status: :created
+      render json: @case, include: { lawyer: { only: [ :id, :name ] } }, status: :created
     else
       render json: @case.errors, status: :unprocessable_entity
     end
   end
 
+  # PUT /users/:user_id/cases/:id
   def update
     if params[:case][:lawyer_id].present?
-      lawyer = User.find_by(id: params[:case][:lawyer_id], role: 'lawyer')
+      lawyer = User.find_by(id: params[:case][:lawyer_id], role: "lawyer")
       return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
-      # ✅ Set status to open (NOT claimed) — lawyer must explicitly accept
-      if @case.update(case_params.merge(lawyer_id: lawyer.id, status: 'open'))
+      if @case.update(case_params.merge(lawyer_id: lawyer.id, status: "open"))
+        # Notify client
         Notification.create!(
           user_id: @case.client_id,
           case_id: @case.id,
           message: "Your case has been assigned to #{lawyer.name}.",
           read: false
         )
-
         NotificationsChannel.broadcast_to(@case.client, {
           message: "Your case has been assigned to #{lawyer.name}",
           case_id: @case.id
         })
 
+        # Notify lawyer
         Notification.create!(
           user_id: lawyer.id,
           case_id: @case.id,
           message: "You have been assigned a new case: #{@case.title}",
           read: false
         )
-
         NotificationsChannel.broadcast_to(lawyer, {
           message: "You have been assigned a new case: #{@case.title}",
           case_id: @case.id
         })
 
-        render json: @case, include: { lawyer: { only: [:id, :name] } }
+        render json: @case, include: { lawyer: { only: [ :id, :name ] } }
       else
         render json: @case.errors, status: :unprocessable_entity
       end
@@ -97,52 +100,53 @@ class CasesController < ApplicationController
     end
   end
 
+  # DELETE /users/:user_id/cases/:id
   def destroy
     @case.destroy
     head :no_content
   end
 
-def accept
-  lawyer = User.find(params[:lawyer_id])
+  # POST /cases/:id/accept
+  def accept
+    lawyer = User.find(params[:lawyer_id])
 
-  if @case.lawyer_id != lawyer.id
-    render json: { error: "You are not assigned to this case." }, status: :unauthorized
-    return
+    if @case.lawyer_id != lawyer.id
+      render json: { error: "You are not assigned to this case." }, status: :unauthorized
+      return
+    end
+
+    if @case.status == "claimed"
+      render json: { error: "This case has already been claimed." }, status: :unprocessable_entity
+      return
+    end
+
+    @case.update!(status: "claimed")
+
+    Notification.create!(
+      user_id: @case.client_id,
+      message: "Your case has been accepted by #{lawyer.name}.",
+      case_id: @case.id
+    )
+    NotificationsChannel.broadcast_to(@case.client, {
+      message: "Your case was accepted by #{lawyer.name}",
+      case_id: @case.id
+    })
+
+    render json: {
+      message: "You have accepted the case.",
+      case: @case
+    }, status: :ok
   end
 
-  if @case.status == "claimed"
-    render json: { error: "This case has already been claimed." }, status: :unprocessable_entity
-    return
-  end
-
-  @case.update!(status: "claimed")
-
-  Notification.create!(
-    user_id: @case.client_id,
-    message: "Your case has been accepted by #{lawyer.name}.",
-    case_id: @case.id
-  )
-
-  NotificationsChannel.broadcast_to(@case.client, {
-    message: "Your case was accepted by #{lawyer.name}",
-    case_id: @case.id
-  })
-
-  render json: {
-    message: "You have accepted the case.",
-    case: @case
-  }, status: :ok
-end
-sa
-
+  # GET /users/:id/available_cases
   def available_cases
-    lawyer = User.find_by(id: params[:id], role: 'lawyer')
-    return render json: { error: 'Lawyer not found' }, status: :not_found unless lawyer
+    lawyer = User.find_by(id: params[:id], role: "lawyer")
+    return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
     open_cases = Case.where(status: "open")
 
-    lawyer_expertise = lawyer.areas_of_expertise.to_s.downcase.split(',').map(&:strip)
-    lawyer_courts = lawyer.preferred_court.to_s.downcase.split(',').map(&:strip)
+    lawyer_expertise = lawyer.areas_of_expertise.to_s.downcase.split(",").map(&:strip)
+    lawyer_courts = lawyer.preferred_court.to_s.downcase.split(",").map(&:strip)
 
     matching = open_cases.select do |c|
       expertise_match = lawyer_expertise.any? { |exp| exp == c.case_type.to_s.downcase.strip }
@@ -150,7 +154,7 @@ sa
       expertise_match && court_match
     end
 
-    render json: matching, include: { lawyer: { only: [:id, :name] } }
+    render json: matching, include: { lawyer: { only: [ :id, :name ] } }
   end
 
   # GET /admin-cases
@@ -158,8 +162,8 @@ sa
     admin = User.find_by(id: params[:user_id], role: "admin")
     return render json: { error: "Unauthorized" }, status: :unauthorized unless admin
 
-    cases = Case.where(lawyer_id: nil, status: 'open')
-    render json: cases, include: { client: { only: [:id, :name, :email] } }
+    cases = Case.where(lawyer_id: nil, status: "open")
+    render json: cases, include: { client: { only: [ :id, :name, :email ] } }
   end
 
   private

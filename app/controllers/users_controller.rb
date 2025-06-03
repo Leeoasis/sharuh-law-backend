@@ -15,29 +15,20 @@ class UsersController < ApplicationController
 
   # GET /api/lawyer/:id/clients
   def lawyer_clients
-    lawyer = User.find_by(id: params[:id], role: 'lawyer')
-    return render json: { error: 'Lawyer not found' }, status: :not_found unless lawyer
+    lawyer = User.find_by(id: params[:id], role: "lawyer")
+    return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
     client_ids = Case.where(lawyer_id: lawyer.id).pluck(:client_id).uniq
-    clients = User.where(id: client_ids, role: 'client')
-
+    clients = User.where(id: client_ids, role: "client")
     render json: clients
   end
 
   # PUT /api/user/:id
   def update_profile
     @user = User.find_by(id: params[:id])
-
-    if @user.nil?
-      render json: { error: "User not found" }, status: :not_found
-      return
-    end
+    return render json: { error: "User not found" }, status: :not_found unless @user
 
     if @user.update(user_params)
-      if @user.saved_change_to_approved? && @user.approved?
-        LawyerMailer.approval_email(@user).deliver_later
-      end
-
       render json: { message: "Profile updated successfully" }, status: :ok
     else
       logger.error "UPDATE FAILED: #{@user.errors.full_messages}"
@@ -48,18 +39,17 @@ class UsersController < ApplicationController
   # GET /api/user/profile/:role/:id
   def profile
     @user = User.find_by(id: params[:id], role: params[:role])
-
-    if @user.nil?
-      render json: { error: "User not found" }, status: :not_found
-    else
+    if @user
       render json: @user, status: :ok
+    else
+      render json: { error: "User not found" }, status: :not_found
     end
   end
 
   private
 
   def search_params
-    params.permit(:areas_of_expertise, :experience_years, :preferred_language, :budget, :license_number)
+    params.permit(:name, :email)
   end
 
   def user_params
@@ -67,16 +57,24 @@ class UsersController < ApplicationController
       :name,
       :email,
       :password,
-      :preferred_language,
-      :budget,
-      :license_number,
+      :role,
+      :admission_enrollment_order,
+      :good_standing_letter,
+      :fidelity_fund_certificate,
+      :id_document,
+      :practice_address,
+      :preferred_court,
       :areas_of_expertise,
       :experience_years,
       :rate,
-      :preferred_court,
+      :license_number,
+      :preferred_language,
       :address,
       :phone_number,
-      :approved
+      :approved,
+      :engagement_form,
+      :client_id_document,
+      :client_proof_of_address
     )
   end
 end
