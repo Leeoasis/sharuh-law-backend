@@ -1,5 +1,5 @@
 class NotificationsChannel < ApplicationCable::Channel
   def subscribed
-    stream_for current_user
+    stream_from "NotificationsChannel_#{params[:user_id]}"
   end
 end
