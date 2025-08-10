@@ -1,8 +1,7 @@
-# app/controllers/notifications_controller.rb
 class NotificationsController < ApplicationController
-  def index
-    user = User.find(params[:user_id])
-    notifications = user.notifications.order(created_at: :desc)
-    render json: notifications
+    def index
+      user = User.find(params[:user_id])
+      render json: user.notifications.order(created_at: :desc)
+    end
   end
-end
+  

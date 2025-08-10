@@ -1,111 +1,197 @@
 class CasesController < ApplicationController
-  before_action :set_case, only: [:accept]
+  before_action :set_case, only: [:show, :update, :destroy, :accept]
+  skip_before_action :verify_authenticity_token, raise: false
 
-  # GET /cases?user_id=...
+  # GET /users/:user_id/cases
   def index
-    user_id = params[:user_id]
-    user = User.find_by(id: user_id)
-
-    return render json: { error: "User not found" }, status: :not_found unless user
-
-    if user.lawyer?
-      @cases = Case.where(lawyer_id: user.id)
-    elsif user.client?
-      @cases = Case.where(client_id: user.id)
-    else
-      return render json: { error: "Invalid role" }, status: :unprocessable_entity
-    end
-
-    render json: @cases
+    user = User.find(params[:user_id])
+    @cases = user.client? ? user.client_cases : user.lawyer_cases
+    render json: @cases, include: { lawyer: { only: [:id, :name, :email] } }
   end
 
-  # POST /cases
+  # GET /users/:user_id/cases/:id
+  def show
+    render json: @case, include: { lawyer: { only: [:id, :name, :email] } }
+  end
+
+  # POST /users/:user_id/cases/check_lawyers
+  def check_lawyers
+    user = User.find(params[:user_id])
+    @case = user.client_cases.build(case_params)
+    matching_lawyers = find_matching_lawyers(@case)
+
+    if matching_lawyers.empty?
+      render json: { message: "No lawyers match your case." }, status: :ok
+    else
+      render json: { message: "Matching lawyers found.", lawyers: matching_lawyers }, status: :ok
+    end
+  end
+
+  # POST /users/:user_id/cases
   def create
-    client = User.find_by(id: params[:user_id], role: "client")
-    return render json: { error: "Client not found" }, status: :not_found unless client
+    user = User.find(params[:user_id])
+    return render json: { error: "Case type is required" }, status: :unprocessable_entity if case_params[:case_type].blank?
 
-    new_case = client.client_cases.build(case_params.merge(status: "open"))
+    @case = user.client_cases.build(case_params.merge(status: "open"))
 
-    if new_case.save
-      matching_lawyers = User.lawyer.where("areas_of_expertise ILIKE ?", "%#{new_case.case_type}%")
-
-      if matching_lawyers.any?
-        matching_lawyers.each do |lawyer|
-          Notification.create!(
-            user: lawyer,
-            message: "New case: #{new_case.title}",
-            case: new_case,
-            read: false
-          )
-
-          ActionCable.server.broadcast("NotificationsChannel_#{lawyer.id}", {
-            message: "New case: #{new_case.title}",
-            case_id: new_case.id
-          })
-        end
-      else
-        ActionCable.server.broadcast("NotificationsChannel_#{client.id}", {
-          message: "No matching lawyers found for your case."
+    if @case.save
+      # Notify admins
+      admin_users = User.where(role: "admin")
+      admin_users.each do |admin|
+        Notification.create!(
+          user_id: admin.id,
+          case_id: @case.id,
+          message: "New case submitted: #{@case.title}",
+          read: false
+        )
+        NotificationsChannel.broadcast_to(admin, {
+          message: "New case submitted: #{@case.title}",
+          case_id: @case.id
         })
       end
 
-      render json: { message: "Case created", case: new_case }, status: :created
+      render json: @case, include: { lawyer: { only: [:id, :name] } }, status: :created
     else
-      render json: { error: new_case.errors.full_messages }, status: :unprocessable_entity
+      render json: @case.errors, status: :unprocessable_entity
     end
+  end
+
+  # PUT /users/:user_id/cases/:id
+  def update
+    if params[:case][:lawyer_id].present?
+      lawyer = User.find_by(id: params[:case][:lawyer_id], role: "lawyer")
+      return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
+
+      if @case.update(case_params.merge(lawyer_id: lawyer.id, status: "open"))
+        # Notify client
+        Notification.create!(
+          user_id: @case.client_id,
+          case_id: @case.id,
+          message: "Your case has been assigned to #{lawyer.name}.",
+          read: false
+        )
+        NotificationsChannel.broadcast_to(@case.client, {
+          message: "Your case has been assigned to #{lawyer.name}",
+          case_id: @case.id
+        })
+
+        # Notify lawyer
+        Notification.create!(
+          user_id: lawyer.id,
+          case_id: @case.id,
+          message: "You have been assigned a new case: #{@case.title}",
+          read: false
+        )
+        NotificationsChannel.broadcast_to(lawyer, {
+          message: "You have been assigned a new case: #{@case.title}",
+          case_id: @case.id
+        })
+
+        render json: @case, include: { lawyer: { only: [:id, :name] } }
+      else
+        render json: @case.errors, status: :unprocessable_entity
+      end
+    else
+      if @case.update(case_params)
+        render json: @case
+      else
+        render json: @case.errors, status: :unprocessable_entity
+      end
+    end
+  end
+
+  # DELETE /users/:user_id/cases/:id
+  def destroy
+    @case.destroy
+    head :no_content
   end
 
   # POST /cases/:id/accept
   def accept
-    lawyer = User.find_by(id: params[:lawyer_id], role: "lawyer")
-    return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
+    lawyer = User.find(params[:lawyer_id])
 
-    if @case.claimed?
-      return render json: { error: "Case already claimed" }, status: :unprocessable_entity
+    if @case.lawyer_id != lawyer.id
+      render json: { error: "You are not assigned to this case." }, status: :unauthorized
+      return
     end
 
-    @case.update!(lawyer_id: lawyer.id, status: "claimed")
+    if @case.status == "claimed"
+      render json: { error: "This case has already been claimed." }, status: :unprocessable_entity
+      return
+    end
+
+    @case.update!(status: "claimed")
 
     Notification.create!(
-      user: @case.client,
-      message: "#{lawyer.name} accepted your case '#{@case.title}'",
-      case: @case,
-      read: false
+      user_id: @case.client_id,
+      message: "Your case has been accepted by #{lawyer.name}.",
+      case_id: @case.id
     )
-
-    ActionCable.server.broadcast("NotificationsChannel_#{@case.client_id}", {
-      message: "#{lawyer.name} accepted your case '#{@case.title}'"
+    NotificationsChannel.broadcast_to(@case.client, {
+      message: "Your case was accepted by #{lawyer.name}",
+      case_id: @case.id
     })
 
-    User.lawyer.where.not(id: lawyer.id).each do |other_lawyer|
-      ActionCable.server.broadcast("NotificationsChannel_#{other_lawyer.id}", {
-        message: "Case '#{@case.title}' already claimed."
-      })
-    end
-
-    render json: { message: "Case successfully claimed." }, status: :ok
+    render json: {
+      message: "You have accepted the case.",
+      case: @case
+    }, status: :ok
   end
 
-  # GET /api/lawyer/:id/available_cases
-def available_cases
-  lawyer = User.find_by(id: params[:id], role: "lawyer")
-  return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
+  # GET /users/:id/available_cases
+  def available_cases
+    lawyer = User.find_by(id: params[:id], role: "lawyer")
+    return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
-  available = Case.where(lawyer_id: nil, status: "open")
-                  .where("case_type ILIKE ?", "%#{lawyer.areas_of_expertise}%")
+    assigned = Case.where(lawyer_id: lawyer.id, status: "open")
 
-  render json: available
-end
+    render json: assigned, include: { client: { only: [:id, :name, :email] } }
+  end
 
+  # GET /admin-cases
+  def admin_index
+    admin = User.find_by(id: params[:user_id], role: "admin")
+    return render json: { error: "Unauthorized" }, status: :unauthorized unless admin
+
+    cases = Case.where(lawyer_id: nil, status: "open")
+    render json: cases, include: { client: { only: [:id, :name, :email] } }
+  end
 
   private
 
   def set_case
-    @case = Case.find_by(id: params[:id])
-    render json: { error: "Case not found" }, status: :not_found unless @case
+    if params[:user_id]
+      user = User.find(params[:user_id])
+
+      if user.client?
+        @case = user.client_cases.find(params[:id])
+      elsif user.lawyer?
+        @case = user.lawyer_cases.find(params[:id])
+      else
+        @case = Case.find(params[:id])
+      end
+    else
+      @case = Case.find(params[:id])
+    end
+  end
+
+  def find_matching_lawyers(case_instance)
+    User.where(role: "lawyer")
+        .where("areas_of_expertise ILIKE ?", "%#{case_instance.case_type}%")
+        .where("preferred_court ILIKE ?", "%#{case_instance.court}%")
+        .where("rate <= ?", case_instance.budget)
   end
 
   def case_params
-    params.require(:case).permit(:title, :description, :court, :budget, :case_type)
+    params.require(:case).permit(
+      :title,
+      :description,
+      :court,
+      :budget,
+      :case_type,
+      :fee,
+      :commission,
+      :lawyer_id
+    )
   end
 end

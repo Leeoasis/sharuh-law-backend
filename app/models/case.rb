@@ -8,4 +8,5 @@ class Case < ApplicationRecord
   validates :title, presence: true
   validates :description, presence: true
   validates :client, presence: true
+  validates :case_type, presence: true
 end
