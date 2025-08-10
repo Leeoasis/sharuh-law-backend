@@ -1,5 +1,8 @@
 source "https://rubygems.org"
 
+  gem 'twilio-ruby'
+
+
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.2.2"
 # Use postgresql as the database for Active Record
@@ -40,4 +43,5 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
   gem "devise"
   gem "devise-jwt"
+  gem 'active_model_serializers', '~> 0.10.0'
 end

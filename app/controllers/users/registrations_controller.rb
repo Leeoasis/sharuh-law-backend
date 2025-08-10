@@ -4,13 +4,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
   respond_to :json
 
   def create
-    build_resource(sign_up_params)
+    user = User.new(sign_up_params)
 
-    if resource.save
-      render json: { user: resource, role: resource.role }, status: :created
+    # Attach uploaded files (if present)
+    attach_documents(user)
+
+    if user.save
+      render json: {
+        user: user.as_json(only: [:id, :name, :email, :role, :approved]),
+        role: user.role
+      }, status: :created
     else
-      Rails.logger.debug "User save failed: #{resource.errors.full_messages.join(', ')}"
-      render json: { errors: resource.errors.full_messages }, status: :unprocessable_entity
+      Rails.logger.debug "User save failed: #{user.errors.full_messages.join(', ')}"
+      render json: { errors: user.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -18,17 +24,37 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [
-      :name, :role, :preferred_language, :budget, :license_number, :areas_of_expertise, :experience_years, :preferred_court, :rate
+      :name, :role, :preferred_language, :budget, :license_number,
+      :areas_of_expertise, :experience_years, :preferred_court, :rate,
+      :admission_enrollment_order, :good_standing_letter, :fidelity_fund_certificate, :id_document,
+      :engagement_form, :client_id_document, :client_proof_of_address,
+      :phone_number # <-- Added phone_number here
     ])
   end
 
   def sign_up_params
-    permitted_params = [ :email, :password, :password_confirmation, :name, :role ]
-    if params[:registration][:role] == "lawyer"
-      permitted_params += [ :license_number, :areas_of_expertise, :experience_years, :preferred_court, :rate ]
-    else
-      permitted_params += [ :preferred_language, :budget ]
+    params.require(:registration).permit(
+      :email, :password, :password_confirmation, :name, :role, :preferred_language,
+      :budget, :license_number, :areas_of_expertise, :experience_years, :preferred_court,
+      :rate, :admission_enrollment_order, :good_standing_letter, :fidelity_fund_certificate,
+      :id_document, :engagement_form, :client_id_document, :client_proof_of_address,
+      :phone_number # <-- Added phone_number here
+    )
+  end
+
+  def attach_documents(user)
+    file_fields = %i[
+      admission_enrollment_order,
+      good_standing_letter,
+      fidelity_fund_certificate,
+      id_document,
+      engagement_form,
+      client_id_document,
+      client_proof_of_address
+    ]
+
+    file_fields.each do |field|
+      user.send(field).attach(params[:registration][field]) if params[:registration][field].present?
     end
-    params.require(:registration).permit(permitted_params)
   end
 end

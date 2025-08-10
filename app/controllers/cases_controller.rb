@@ -1,17 +1,17 @@
 class CasesController < ApplicationController
-  before_action :set_case, only: [ :show, :update, :destroy, :accept ]
+  before_action :set_case, only: [:show, :update, :destroy, :accept]
   skip_before_action :verify_authenticity_token, raise: false
 
   # GET /users/:user_id/cases
   def index
     user = User.find(params[:user_id])
     @cases = user.client? ? user.client_cases : user.lawyer_cases
-    render json: @cases, include: { lawyer: { only: [ :id, :name, :email ] } }
+    render json: @cases, include: { lawyer: { only: [:id, :name, :email] } }
   end
 
   # GET /users/:user_id/cases/:id
   def show
-    render json: @case, include: { lawyer: { only: [ :id, :name, :email ] } }
+    render json: @case, include: { lawyer: { only: [:id, :name, :email] } }
   end
 
   # POST /users/:user_id/cases/check_lawyers
@@ -50,7 +50,7 @@ class CasesController < ApplicationController
         })
       end
 
-      render json: @case, include: { lawyer: { only: [ :id, :name ] } }, status: :created
+      render json: @case, include: { lawyer: { only: [:id, :name] } }, status: :created
     else
       render json: @case.errors, status: :unprocessable_entity
     end
@@ -87,7 +87,7 @@ class CasesController < ApplicationController
           case_id: @case.id
         })
 
-        render json: @case, include: { lawyer: { only: [ :id, :name ] } }
+        render json: @case, include: { lawyer: { only: [:id, :name] } }
       else
         render json: @case.errors, status: :unprocessable_entity
       end
@@ -143,18 +143,9 @@ class CasesController < ApplicationController
     lawyer = User.find_by(id: params[:id], role: "lawyer")
     return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
-    open_cases = Case.where(status: "open")
+    assigned = Case.where(lawyer_id: lawyer.id, status: "open")
 
-    lawyer_expertise = lawyer.areas_of_expertise.to_s.downcase.split(",").map(&:strip)
-    lawyer_courts = lawyer.preferred_court.to_s.downcase.split(",").map(&:strip)
-
-    matching = open_cases.select do |c|
-      expertise_match = lawyer_expertise.any? { |exp| exp == c.case_type.to_s.downcase.strip }
-      court_match = lawyer_courts.any? { |crt| crt == c.court.to_s.downcase.strip }
-      expertise_match && court_match
-    end
-
-    render json: matching, include: { lawyer: { only: [ :id, :name ] } }
+    render json: assigned, include: { client: { only: [:id, :name, :email] } }
   end
 
   # GET /admin-cases
@@ -163,7 +154,7 @@ class CasesController < ApplicationController
     return render json: { error: "Unauthorized" }, status: :unauthorized unless admin
 
     cases = Case.where(lawyer_id: nil, status: "open")
-    render json: cases, include: { client: { only: [ :id, :name, :email ] } }
+    render json: cases, include: { client: { only: [:id, :name, :email] } }
   end
 
   private

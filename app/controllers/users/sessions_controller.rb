@@ -14,7 +14,17 @@ class Users::SessionsController < Devise::SessionsController
   private
 
   def respond_with(resource, _opts = {})
-    render json: { user: resource, role: resource.role }, status: :ok
+    render json: {
+      user: resource.as_json(
+        only: [
+          :id, :name, :email, :role, :approved,
+          :license_number, :experience_years, :rate,
+          :areas_of_expertise, :preferred_court, :preferred_language,
+          :address, :phone_number
+        ]
+      ),
+      role: resource.role
+    }, status: :ok
   end
 
   def respond_to_on_destroy
