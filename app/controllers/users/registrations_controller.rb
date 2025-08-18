@@ -57,4 +57,4 @@ class Users::RegistrationsController < Devise::RegistrationsController
       user.send(field).attach(params[:registration][field]) if params[:registration][field].present?
     end
   end
-end
+end 
