@@ -83,6 +83,9 @@ test:
 #
 production:
   <<: *default
-  database: sharuh_law_backend_production
-  username: sharuh_law_backend
-  password: <%= ENV["SHARUH_LAW_BACKEND_DATABASE_PASSWORD"] %>
+  database: <%= ENV["RENDER_DATABASE_NAME"] || "lawyer_connect_database" %>
+  username: <%= ENV["RENDER_DATABASE_USERNAME"] || "lawyer_connect_database_user" %>
+  password: <%= ENV["RENDER_DATABASE_PASSWORD"] %>
+  host: <%= ENV["RENDER_DATABASE_HOST"] || "dpg-d2d3o50dl3ps73d3ofag-a" %>
+  port: <%= ENV.fetch("RENDER_DATABASE_PORT") { 5432 } %>
+  sslmode: require
