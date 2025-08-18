@@ -8,19 +8,16 @@ gem "rails", "~> 7.2.2"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 
-# Use the Puma web server [https://github.com/puma/puma]
+# Use the Puma web server
 gem "puma", ">= 5.0"
-
-# Build JSON APIs with ease [https://github.com/rails/jbuilder]
-# gem "jbuilder"
 
 # Use Redis adapter to run Action Cable in production
 # gem "redis", ">= 4.0.1"
 
-# Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
+# Use Kredis to get higher-level data types in Redis
 # gem "kredis"
 
-# Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
+# Use Active Model has_secure_password
 # gem "bcrypt", "~> 3.1.7"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -29,26 +26,26 @@ gem "tzinfo-data", platforms: %i[windows jruby]
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
-# Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
-# gem "image_processing", "~> 1.2"
-
-# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
+# Use Rack CORS for handling Cross-Origin Resource Sharing (CORS)
 gem "rack-cors"
 
-# Active Model Serializers (moved outside dev/test so available in production)
+# Active Model Serializers (available in production)
 gem 'active_model_serializers', '~> 0.10.0'
 
+# Devise authentication (needed in production)
+gem "devise"
+gem "devise-jwt"
+
+# AWS S3 support for Active Storage
+gem "aws-sdk-s3", require: false
+
 group :development, :test do
-  # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
+  # Debugging
   gem "debug", platforms: %i[mri windows], require: "debug/prelude"
 
-  # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
+  # Security static analysis
   gem "brakeman", require: false
 
-  # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
+  # Ruby styling
   gem "rubocop-rails-omakase", require: false
-
-  gem "devise"
-  gem "devise-jwt"
-  gem "aws-sdk-s3", require: false
 end
