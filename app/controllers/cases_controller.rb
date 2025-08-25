@@ -36,15 +36,14 @@ class CasesController < ApplicationController
 
     if @case.save
       # Notify admins
-      admin_users = User.where(role: "admin")
-      admin_users.each do |admin|
+      User.where(role: "admin").each do |admin|
         Notification.create!(
           user_id: admin.id,
           case_id: @case.id,
           message: "New case submitted: #{@case.title}",
           read: false
         )
-        NotificationsChannel.broadcast_to(admin, {
+        safe_broadcast(admin, {
           message: "New case submitted: #{@case.title}",
           case_id: @case.id
         })
@@ -70,7 +69,7 @@ class CasesController < ApplicationController
           message: "Your case has been assigned to #{lawyer.name}.",
           read: false
         )
-        NotificationsChannel.broadcast_to(@case.client, {
+        safe_broadcast(@case.client, {
           message: "Your case has been assigned to #{lawyer.name}",
           case_id: @case.id
         })
@@ -82,7 +81,7 @@ class CasesController < ApplicationController
           message: "You have been assigned a new case: #{@case.title}",
           read: false
         )
-        NotificationsChannel.broadcast_to(lawyer, {
+        safe_broadcast(lawyer, {
           message: "You have been assigned a new case: #{@case.title}",
           case_id: @case.id
         })
@@ -111,13 +110,11 @@ class CasesController < ApplicationController
     lawyer = User.find(params[:lawyer_id])
 
     if @case.lawyer_id != lawyer.id
-      render json: { error: "You are not assigned to this case." }, status: :unauthorized
-      return
+      return render json: { error: "You are not assigned to this case." }, status: :unauthorized
     end
 
     if @case.status == "claimed"
-      render json: { error: "This case has already been claimed." }, status: :unprocessable_entity
-      return
+      return render json: { error: "This case has already been claimed." }, status: :unprocessable_entity
     end
 
     @case.update!(status: "claimed")
@@ -127,7 +124,7 @@ class CasesController < ApplicationController
       message: "Your case has been accepted by #{lawyer.name}.",
       case_id: @case.id
     )
-    NotificationsChannel.broadcast_to(@case.client, {
+    safe_broadcast(@case.client, {
       message: "Your case was accepted by #{lawyer.name}",
       case_id: @case.id
     })
@@ -144,7 +141,6 @@ class CasesController < ApplicationController
     return render json: { error: "Lawyer not found" }, status: :not_found unless lawyer
 
     assigned = Case.where(lawyer_id: lawyer.id, status: "open")
-
     render json: assigned, include: { client: { only: [:id, :name, :email] } }
   end
 
@@ -193,5 +189,12 @@ class CasesController < ApplicationController
       :commission,
       :lawyer_id
     )
+  end
+
+  # Broadcast wrapper (so Redis errors don’t break the request)
+  def safe_broadcast(user, payload)
+    NotificationsChannel.broadcast_to(user, payload)
+  rescue => e
+    Rails.logger.error "Broadcast failed: #{e.message}"
   end
 end
