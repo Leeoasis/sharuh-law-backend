@@ -22,39 +22,41 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   private
 
+  # Configure Devise strong params
   def configure_permitted_parameters
     devise_parameter_sanitizer.permit(:sign_up, keys: [
       :name, :role, :preferred_language, :budget, :license_number,
       :areas_of_expertise, :experience_years, :preferred_court, :rate,
-      :admission_enrollment_order, :good_standing_letter, :fidelity_fund_certificate, :id_document,
-      :engagement_form, :client_id_document, :client_proof_of_address,
-      :phone_number # <-- Added phone_number here
+      :admission_enrollment_order, :good_standing_letter, :fidelity_fund_certificate,
+      :id_document, :engagement_form, :client_id_document, :client_proof_of_address,
+      :phone_number
     ])
   end
 
+  # Expect params[:user] now, not params[:registration]
   def sign_up_params
-    params.require(:registration).permit(
+    params.require(:user).permit(
       :email, :password, :password_confirmation, :name, :role, :preferred_language,
       :budget, :license_number, :areas_of_expertise, :experience_years, :preferred_court,
       :rate, :admission_enrollment_order, :good_standing_letter, :fidelity_fund_certificate,
       :id_document, :engagement_form, :client_id_document, :client_proof_of_address,
-      :phone_number # <-- Added phone_number here
+      :phone_number
     )
   end
 
   def attach_documents(user)
     file_fields = %i[
-      admission_enrollment_order,
-      good_standing_letter,
-      fidelity_fund_certificate,
-      id_document,
-      engagement_form,
-      client_id_document,
+      admission_enrollment_order
+      good_standing_letter
+      fidelity_fund_certificate
+      id_document
+      engagement_form
+      client_id_document
       client_proof_of_address
     ]
 
     file_fields.each do |field|
-      user.send(field).attach(params[:registration][field]) if params[:registration][field].present?
+      user.send(field).attach(params[:user][field]) if params[:user][field].present?
     end
   end
-end 
+end
